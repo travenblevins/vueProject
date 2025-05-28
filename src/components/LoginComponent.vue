@@ -1,24 +1,26 @@
 <template>
-  <div class="login-container">
-    <form class="login-form" @submit.prevent="handleLogin">
-      <h2>Login</h2>
-      <div class="input-group">
-        <label for="email">Email</label>
-        <input id="email" v-model="email" type="email" placeholder="Enter your email" required />
-      </div>
-      <div class="input-group">
-        <label for="password">Password</label>
-        <input id="password" v-model="password" type="password" placeholder="Enter your password" required />
-      </div>
-      <p v-if="error" class="error-message">{{ error }}</p>
-      <button type="submit" :disabled="loading">
-        {{ loading ? 'Logging in...' : 'Login' }}
-      </button>
-      <p class="signup-link">
-        Don't have an account?
-        <router-link to="/signup">Sign up</router-link>
-      </p>
-    </form>
+  <div class="login-page">
+    <div class="login-container">
+      <form class="login-form" @submit.prevent="handleLogin">
+        <h2>Login</h2>
+        <div class="input-group">
+          <label for="email">Email</label>
+          <input id="email" v-model="email" type="email" placeholder="Enter your email" required />
+        </div>
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input id="password" v-model="password" type="password" placeholder="Enter your password" required />
+        </div>
+        <p v-if="error" class="error-message">{{ error }}</p>
+        <button type="submit" :disabled="loading">
+          {{ loading ? 'Logging in...' : 'Login' }}
+        </button>
+        <p class="signup-link">
+          Don't have an account?
+          <router-link to="/signup">Sign up</router-link>
+        </p>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -55,13 +57,34 @@ export default {
 }
 </script>
 
+<style>
+/* Remove any margin and padding from body and html */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden;
+}
+</style>
+
 <style scoped>
+.login-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+  overflow-y: auto;
+}
+
 .login-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+  padding: 2rem;
 }
 
 .login-form {
@@ -73,6 +96,8 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .login-form h2 {

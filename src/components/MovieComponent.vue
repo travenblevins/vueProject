@@ -7,6 +7,7 @@
                     class="search-input" />
             </div>
             <div class="user-info">
+                <router-link to="/my-lists" class="my-lists-btn">My Lists</router-link>
                 <span v-if="user">Welcome, {{ user.displayName || user.email }}</span>
                 <button @click="handleLogout" class="logout-btn">Logout</button>
             </div>
@@ -26,6 +27,16 @@
                         <span class="year">{{ new Date(movie.release_date).getFullYear() }}</span>
                     </div>
                     <p class="overview">{{ movie.overview.slice(0, 150) }}...</p>
+                    <div class="movie-actions">
+                        <button @click="toggleInterested(movie)" :class="['action-btn', 'interested',
+                            movieStates[movie.id]?.listType === 'interested' ? 'active' : '']">
+                            {{ movieStates[movie.id]?.listType === 'interested' ? 'Uninterested' : 'Interested' }}
+                        </button>
+                        <button @click="toggleWatched(movie)" :class="['action-btn', 'seen',
+                            movieStates[movie.id]?.listType === 'seen' ? 'active' : '']">
+                            {{ movieStates[movie.id]?.listType === 'seen' ? 'Watched' : 'Watch' }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -48,9 +59,10 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-import { useAuth } from '../composables/useAuth'
 import { useRouter } from 'vue-router'
 import { environment } from '../config/environment'
+import { MovieListService } from '../services/movieList'
+import { user, logout } from '../firebase/auth'
 
 const API_KEY = environment.tmdb.apiKey
 const BASE_URL = environment.tmdb.baseUrl
@@ -58,7 +70,6 @@ const BASE_URL = environment.tmdb.baseUrl
 export default {
     name: 'MovieComponent',
     setup() {
-        const { user, logout } = useAuth()
         const router = useRouter()
 
         const movies = ref([])
@@ -67,6 +78,7 @@ export default {
         const searchQuery = ref('')
         const currentPage = ref(1)
         const searchTimeout = ref(null)
+        const movieStates = ref({})
 
         const fetchMovies = async (page = 1, query = '') => {
             loading.value = true
@@ -91,6 +103,14 @@ export default {
                 const data = await response.json()
                 movies.value = data.results
                 currentPage.value = page
+
+                // Check movie states for all fetched movies
+                await Promise.all(movies.value.map(async (movie) => {
+                    const state = await MovieListService.checkMovieInList(user.value.uid, movie.id)
+                    if (state) {
+                        movieStates.value[movie.id] = state
+                    }
+                }))
             } catch (err) {
                 console.error('Error fetching movies:', err)
                 error.value = 'Failed to load movies. Please try again later.'
@@ -124,8 +144,48 @@ export default {
             }
         }
 
+        const toggleInterested = async (movie) => {
+            try {
+                const currentState = movieStates.value[movie.id]
+                if (currentState?.listType === 'interested') {
+                    await MovieListService.removeFromList(currentState.id)
+                    delete movieStates.value[movie.id]
+                } else {
+                    const docId = await MovieListService.addMovieToList(user.value.uid, movie, 'interested')
+                    movieStates.value[movie.id] = {
+                        id: docId,
+                        listType: 'interested'
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling interested state:', error)
+                alert('Failed to update movie status. Please try again.')
+            }
+        }
+
+        const toggleWatched = async (movie) => {
+            try {
+                const currentState = movieStates.value[movie.id]
+                if (currentState?.listType === 'seen') {
+                    await MovieListService.removeFromList(currentState.id)
+                    delete movieStates.value[movie.id]
+                } else {
+                    const docId = await MovieListService.addMovieToList(user.value.uid, movie, 'seen')
+                    movieStates.value[movie.id] = {
+                        id: docId,
+                        listType: 'seen'
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling watched state:', error)
+                alert('Failed to update movie status. Please try again.')
+            }
+        }
+
         onMounted(() => {
-            fetchMovies()
+            if (user.value) {
+                fetchMovies()
+            }
         })
 
         return {
@@ -135,9 +195,12 @@ export default {
             searchQuery,
             currentPage,
             user,
+            movieStates,
             handleSearch,
             changePage,
-            handleLogout
+            handleLogout,
+            toggleInterested,
+            toggleWatched
         }
     }
 }
@@ -304,5 +367,68 @@ h1 {
 .page-info {
     color: #64748b;
     font-weight: 500;
+}
+
+.movie-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.action-btn.interested {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.action-btn.interested:hover {
+    background-color: #2563eb;
+}
+
+.action-btn.interested.active {
+    background-color: #dc2626;
+}
+
+.action-btn.interested.active:hover {
+    background-color: #b91c1c;
+}
+
+.action-btn.seen {
+    background-color: #10b981;
+    color: white;
+}
+
+.action-btn.seen:hover {
+    background-color: #059669;
+}
+
+.action-btn.seen.active {
+    background-color: #6366f1;
+}
+
+.action-btn.seen.active:hover {
+    background-color: #4f46e5;
+}
+
+.my-lists-btn {
+    padding: 0.5rem 1rem;
+    background: #8b5cf6;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.my-lists-btn:hover {
+    background: #7c3aed;
 }
 </style>

@@ -2,7 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/LoginComponent.vue'
 import SignupComponent from '../components/SignupComponent.vue'
 import MovieComponent from '../components/MovieComponent.vue'
-import { auth } from '../firebase/config'
+import MovieLists from '../components/MovieLists.vue'
+import { getCurrentUser } from '../firebase/config'
 
 const routes = [
     {
@@ -26,6 +27,12 @@ const routes = [
         name: 'Home',
         component: MovieComponent,
         meta: { requiresAuth: true }
+    },
+    {
+        path: '/my-lists',
+        name: 'MovieLists',
+        component: MovieLists,
+        meta: { requiresAuth: true }
     }
 ]
 
@@ -35,12 +42,12 @@ const router = createRouter({
 })
 
 // Navigation guard to check authentication
-router.beforeEach((to, from, next) => {
-    const currentUser = auth.currentUser
+router.beforeEach(async (to, from, next) => {
+    const user = await getCurrentUser()
 
     // Check if the route requires authentication
     if (to.matched.some(record => record.meta.requiresAuth)) {
-        if (!currentUser) {
+        if (!user) {
             next('/login')
         } else {
             next()
@@ -48,7 +55,7 @@ router.beforeEach((to, from, next) => {
     }
     // Check if the route requires guest access (login/signup)
     else if (to.matched.some(record => record.meta.requiresGuest)) {
-        if (currentUser) {
+        if (user) {
             next('/home')
         } else {
             next()
